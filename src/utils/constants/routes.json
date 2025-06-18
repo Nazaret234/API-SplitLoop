@@ -1,0 +1,7 @@
+{
+  "users": "/users",
+  "groups": "/groups",
+  "groupsMembers": "/groupsMembers",
+  "expenses": "/expenses",
+  "expensesSplits": "/expensesSplits"
+}

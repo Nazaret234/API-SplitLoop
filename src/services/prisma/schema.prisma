@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../../../../node_modules/.prisma/client"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  // url      = env("SUPABASE_SPLITLOOP_PROD") // URL de la base de datos de producción
+  url      = env("SUPABASE_SPLITLOOP_DEV") // URL de la base de datos de desarrollo
+}
+
+model Users {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String?  @unique
+  image     String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  groupMembers   GroupsMembers[]
+  createdGroups  Groups[]        @relation("CreatedGroups")
+  expensesPaid   Expenses[]      @relation("PaidBy")
+  expensesOwed   ExpensesSplits[]
+}
+
+model Groups {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  inviteCode  String   @unique @default(dbgenerated("substring(replace(gen_random_uuid()::text, '-', ''), 1, 8)"))
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Users    @relation("CreatedGroups", fields: [createdById], references: [id])
+  createdById String
+  members     GroupsMembers[]
+  expenses    Expenses[]
+}
+
+model GroupsMembers {
+  id        String   @id @default(uuid())
+  user      Users    @relation(fields: [userId], references: [id])
+  userId    String
+  group     Groups   @relation(fields: [groupId], references: [id])
+  groupId   String
+  role      Role     @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, groupId])
+}
+
+enum Role {
+  ADMIN    // Puede gestionar el grupo y sus miembros
+  MEMBER   // Usuario regular del grupo
+  OWNER    // Creador del grupo, tiene todos los permisos
+}
+
+model Expenses {
+  id          String   @id @default(uuid())
+  group       Groups    @relation(fields: [groupId], references: [id])
+  groupId     String
+  paidBy      Users    @relation("PaidBy", fields: [paidById], references: [id])
+  paidById    String
+  description String
+  amount      Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      String   @default("pending") // pending, settled, cancelled
+  splits      ExpensesSplits[]
+}
+
+model ExpensesSplits {
+  id         String   @id @default(uuid())
+  expense    Expenses  @relation(fields: [expenseId], references: [id])
+  expenseId  String
+  owedBy     Users     @relation(fields: [owedById], references: [id])
+  owedById   String
+  amount     Float
+  status     String   @default("pending") // pending, paid, cancelled
+  
+  @@unique([expenseId, owedById])
+}
